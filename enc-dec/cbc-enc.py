@@ -7,8 +7,41 @@ from halib import *
 #print("Number:",len(sys.argv))
 #print("Arg:",str(sys.argv))
 
+kFlag = False
+iFlag = False
+oFlag = False
 
-keyFile = "../temp/keyFile1"
+if "-k" in sys.argv:
+    try:
+        keyFile = sys.argv[sys.argv.index("-k")+1]
+        print(keyFile)
+        kFlag = True
+    except:
+        pass
+
+if "-i" in sys.argv:
+    try:
+        msgFile = sys.argv[sys.argv.index("-i")+1]
+        print(msgFile)
+        iFlag = True
+    except:
+        pass
+
+if "-o" in sys.argv:
+    try:
+        outFile = sys.argv[sys.argv.index("-o")+1]
+        print(outFile)
+        oFlag = True
+    except:
+        pass
+
+if(not kFlag or not oFlag or not iFlag):
+    print("usage:" ,sys.argv[0], "-k <keyFile> -i <inputFile> -o <outputFile>", file=sys.stderr)
+    exit()
+
+
+
+#keyFile = "../temp/keyFile1"
 msgFile = "../temp/testFile1"
 outFile = "testOut"
 
