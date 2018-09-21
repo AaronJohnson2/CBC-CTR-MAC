@@ -12,6 +12,6 @@ keyFile, msgFile, outFile = parse_argv(sys.argv)
 cipher = read_msg(msgFile)
 Fk = cipher_gen(keyFile)
 
-msg = dec_CTR(cipher, Fk)
+msg = prl_dec_CTR(cipher, Fk)
 
 write_msg(msg, outFile)
