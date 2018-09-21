@@ -1,10 +1,16 @@
 from Crypto.Cipher import AES
 from os import urandom
+import sys
 
 BLOCK_SIZE = 16
 
 def cipher_gen(filename):
-    file = open(filename, "r")
+    try:
+        file = open(filename, "r")
+    except IOError:
+        print("Error: keyfile '" + filename + "' not found.", file=sys.stderr)
+        exit()
+
     key = file.read().replace('\n','')
     hexkey = bytes.fromhex(key)
     Fk = AES.new(hexkey, AES.MODE_ECB)
@@ -13,7 +19,12 @@ def cipher_gen(filename):
     return Fk
 
 def read_msg(filename):
-    file = open(filename, "rb")
+    try:
+        file = open(filename, "rb")
+    except IOError:
+        print("Error: msgfile '" + filename + "' not found.", file=sys.stderr)
+        exit()
+
     msg = file.read()
     file.close()
     return msg
@@ -84,9 +95,9 @@ def dec_block_CBC(s1, s2, Fk):
     return XOR(s1, I)
 
 def enc_CBC(msg, Fk):
-    print(len(msg))
+    #print(len(msg))
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
-    print(len(mBlocks))
+    #print(len(mBlocks))
     cBlocks = []
     IV = urandom(BLOCK_SIZE)
     cBlocks.append(IV)
@@ -120,7 +131,30 @@ def strip_pad(padded):
     pad = padded[len(padded)-1]
     msg = padded[:len(padded)-pad]
     return msg
-    #msg = bytearray(padded)
     
-    #for i in range(pad):
-        #msg[len[msg]-1-i] = 
+
+def parse_argv(argv):
+    try:
+        keyFile = argv[argv.index("-k")+1]
+        kFlag = True
+    except:
+        kFlag = False
+
+    try:
+        msgFile = argv[argv.index("-i")+1]
+        iFlag = True
+    except:
+        iFlag = False
+
+    try:
+        outFile = argv[argv.index("-o")+1]
+        oFlag = True
+    except:
+        oFlag = False
+
+    if(not kFlag or not oFlag or not iFlag):
+        print("usage:" ,sys.argv[0], "-k <keyFile> -i <inputFile> -o <outputFile>", file=sys.stderr)
+        exit()
+
+    return keyFile, msgFile, outFile
+
