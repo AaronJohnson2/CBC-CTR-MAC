@@ -175,7 +175,6 @@ def strip_pad(padded):
     pad = padded[len(padded)-1]
     msg = padded[:len(padded)-pad]
     return msg
-    
 
 def parse_argv(argv):
     try:
@@ -201,3 +200,45 @@ def parse_argv(argv):
         exit()
 
     return keyFile, msgFile, outFile
+
+def parse_argv_MAC(argv):
+    try:
+        keyFile = argv[argv.index("-k")+1]
+        kFlag = True
+    except:
+        kFlag = False
+
+    try:
+        msgFile = argv[argv.index("-m")+1]
+        iFlag = True
+    except:
+        iFlag = False
+
+    try:
+        outFile = argv[argv.index("-t")+1]
+        oFlag = True
+    except:
+        oFlag = False
+
+    if(not kFlag or not oFlag or not iFlag):
+        print("usage:" ,sys.argv[0], "-k <keyFile> -m <msgFile> -t <tagFile>", file=sys.stderr)
+        exit()
+
+    return keyFile, msgFile, outFile
+
+def build_tag(msg, Fk):
+    mBlocks = split_pad_msg(msg, BLOCK_SIZE)
+    N = len(msg)
+    m_prev = Fk.encrypt(bytes(N.to_bytes(16, byteorder='big')))
+
+    for i in range(len(mBlocks)):
+        tag = enc_block_CBC(m_prev, mBlocks[i], Fk)
+        m_prev = tag
+
+    return tag
+
+def verify_tag(msg, tag, Fk):
+    if tag == build_tag(msg, Fk):
+        return True
+    else:
+        return False
