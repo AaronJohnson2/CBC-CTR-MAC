@@ -3,3 +3,5 @@
 Students: Hayden Coffey, Aaron Johnson
 
 Course: COSC 483
+
+Programming Assignment 1
