@@ -1,3 +1,10 @@
 #!/bin/zsh
 
-python enc-dec/cbc-enc.py
+for i in {1..$#}
+    do
+        args+=$i
+        echo $i
+    done
+echo $args
+echo $@
+python enc-dec/cbc-enc.py $@
