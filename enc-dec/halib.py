@@ -119,12 +119,47 @@ def dec_CBC(cipher, Fk):
 
    return strip_pad(msg)
 
-def enc_block_CTR(s1, s2, Fk):
+#------------CTR Functions--------------------
+def block_CTR(s1, s2, Fk):
     I = Fk.encrypt(s1)
     if len(s2) < len(s1):
         I = I[:len(s2)]
 
     return XOR(I,s2)
+
+def enc_CTR(msg, Fk):
+    mBlocks = split_msg(msg, BLOCK_SIZE)
+    cBlocks = []
+    ctrBlocks = []
+
+    IV = urandom(BLOCK_SIZE)
+    cBlocks.append(IV)
+    
+    CTR = int.from_bytes(IV, byteorder='big')
+    for i in range(len(mBlocks)):
+        ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
+
+    for i in range(len(mBlocks)):
+        ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
+        cBlocks.append(ci)
+
+    return glue_msg(cBlocks)
+
+def dec_CTR(cipher, Fk):
+   cBlocks = split_msg(cipher, BLOCK_SIZE)
+   mBlocks = []
+   ctrBlocks = []
+
+   IV = cBlocks[0]
+   CTR = int.from_bytes(IV, byteorder='big')
+   for i in range(len(mBlocks)):
+        ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
+
+   for i in range(len(mBlocks)):
+        mi = block_CTR(ctrBlocks[i], cBlocks[i], Fk)
+        mBlocks.append(mi)
+
+   return glue_msg(mBlocks)
 
 def glue_msg(blocks):
     cipher = bytearray()
