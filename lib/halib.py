@@ -48,7 +48,8 @@ def split_msg(msg, blockSize):
         for j in range(blockSize):
             tmp[j] = msg[i*blockSize + j]
 
-        blocks.append(bytes(tmp))
+        #blocks.append(bytes(tmp))
+        blocks.append(bytearray(tmp))
    
     #Partial Block
     tmp = bytearray(r)
@@ -56,7 +57,8 @@ def split_msg(msg, blockSize):
         tmp[i] = msg[q * blockSize + i]
 
     if r:
-        blocks.append(bytes(tmp))
+        #blocks.append(bytes(tmp))
+        blocks.append(bytearray(tmp))
 
     return blocks
 
@@ -70,7 +72,8 @@ def split_pad_msg(msg, blockSize):
     if not r:
         blocks.append(bytearray(blockSize))
     else:
-        padBlock = bytes(pad)
+        #padBlock = bytes(pad)
+        padBlock = bytearray(pad)
         blocks[len(blocks)-1] = glue_msg([blocks[len(blocks)-1], padBlock])
 
     for i in range(r,blockSize):
@@ -91,7 +94,8 @@ def enc_block_CBC(s1,s2,Fk):
     return Fk.encrypt(I)
 
 def dec_block_CBC(s1, s2, Fk):
-    I = Fk.decrypt(s2)
+    I = Fk.decrypt(bytes(s2))
+    #I = Fk.decrypt(s2)
     return XOR(s1, I)
 
 def enc_CBC(msg, Fk):
@@ -169,7 +173,8 @@ def glue_msg(blocks):
     for i in range(len(blocks)):
         cipher += blocks[i]
 
-    return bytes(cipher)
+    #return bytes(cipher)
+    return cipher
 
 def strip_pad(padded):
     pad = padded[len(padded)-1]
