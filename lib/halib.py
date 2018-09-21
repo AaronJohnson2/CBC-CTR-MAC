@@ -2,6 +2,7 @@
 #COSC 483
 from Crypto.Cipher import AES
 from os import urandom
+from multiprocessing import Pool
 import sys
 
 #Block size algorithms operate on
@@ -175,6 +176,21 @@ def dec_CTR(cipher, Fk):
 
    return glue_msg(mBlocks)
 
+#Parallel Implementation of enc_CTR
+def prl_enc_CTR(msg, Fk, pNum):
+    p = Pool(processes=pNum)
+    cipher = p.map(enc_CTR, (msg, Fk))
+    p.close()
+
+    return cipher
+
+#Parallel Implementation of dec_CTR
+def prl_dec_CTR(cipher, Fk, pNum):
+    p = Pool(processes=pNum)
+    msg = p.map(dec_CTR, (cipher, Fk))
+    p.close()
+
+    return msg
 #---------------------------------------------
 
 #Concatenate given list of byte strings
