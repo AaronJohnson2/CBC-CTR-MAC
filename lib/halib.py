@@ -1,9 +1,13 @@
+#halib - Hayden Aaron Library
+#COSC 483
 from Crypto.Cipher import AES
 from os import urandom
 import sys
 
+#Block size algorithms operate on
 BLOCK_SIZE = 16
 
+#Create and return pseudorandom function from keyfile
 def cipher_gen(filename):
     try:
         file = open(filename, "r")
@@ -18,6 +22,7 @@ def cipher_gen(filename):
 
     return Fk
 
+#Read in byte data from file
 def read_msg(filename):
     try:
         file = open(filename, "rb")
@@ -29,16 +34,16 @@ def read_msg(filename):
     file.close()
     return msg
 
+#Write byte data to file
 def write_msg(msg, filename):
     file = open(filename, "wb")
     file.write(msg)
     file.close()
     return
 
+#Split and return message into blocks without padding
 def split_msg(msg, blockSize):
-    #msg = str(msg)
     blocks = []
-
     q,r = divmod(len(msg), blockSize)
 
     #Entire Blocks
@@ -48,7 +53,6 @@ def split_msg(msg, blockSize):
         for j in range(blockSize):
             tmp[j] = msg[i*blockSize + j]
 
-        #blocks.append(bytes(tmp))
         blocks.append(bytearray(tmp))
    
     #Partial Block
@@ -57,16 +61,15 @@ def split_msg(msg, blockSize):
         tmp[i] = msg[q * blockSize + i]
 
     if r:
-        #blocks.append(bytes(tmp))
         blocks.append(bytearray(tmp))
 
     return blocks
 
+#Return msg split into blocks with padding
 def split_pad_msg(msg, blockSize):
     q,r = divmod(len(msg), blockSize)
     blocks = split_msg(msg, blockSize)
 
-    #Padding
     pad = blockSize - r
 
     if not r:
@@ -80,6 +83,7 @@ def split_pad_msg(msg, blockSize):
 
     return blocks
 
+#Return XOR of two given byte arrays
 def XOR(s1, s2):
     s = bytearray(len(s1))
 
@@ -88,14 +92,18 @@ def XOR(s1, s2):
 
     return s
 
+#------------CBC Functions--------------------
+#Single block encoding for CBC, CBC-MAC
 def enc_block_CBC(s1,s2,Fk):
     I = XOR(s1,s2)
     return Fk.encrypt(bytes(I))
 
+#Single block decoding for CBC
 def dec_block_CBC(s1, s2, Fk):
     I = Fk.decrypt(bytes(s2))
     return XOR(s1, I)
 
+#Encode given message with CBC and pseudorandom Fk
 def enc_CBC(msg, Fk):
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
     cBlocks = []
@@ -109,6 +117,7 @@ def enc_CBC(msg, Fk):
 
     return glue_msg(cBlocks)
 
+#Decode given message with CBC and pseudorandom Fk
 def dec_CBC(cipher, Fk):
    cBlocks = split_msg(cipher, BLOCK_SIZE) 
    mBlocks = []
@@ -122,6 +131,7 @@ def dec_CBC(cipher, Fk):
    return strip_pad(msg)
 
 #------------CTR Functions--------------------
+#Single block encoding/decoding for CTR
 def block_CTR(s1, s2, Fk):
     I = Fk.encrypt(bytes(s1))
     if len(s2) < len(s1):
@@ -129,6 +139,7 @@ def block_CTR(s1, s2, Fk):
 
     return XOR(I,s2)
 
+#Encode given message with CTR and pseudorandom Fk
 def enc_CTR(msg, Fk):
     mBlocks = split_msg(msg, BLOCK_SIZE)
     cBlocks = []
@@ -147,6 +158,7 @@ def enc_CTR(msg, Fk):
 
     return glue_msg(cBlocks)
 
+#Decode given message with CTR and pseudorandom Fk
 def dec_CTR(cipher, Fk):
    cBlocks = split_msg(cipher, BLOCK_SIZE)
    mBlocks = []
@@ -159,11 +171,13 @@ def dec_CTR(cipher, Fk):
 
    for i in range(len(cBlocks)-1):
         mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
-        #print(mi)
         mBlocks.append(mi)
 
    return glue_msg(mBlocks)
 
+#---------------------------------------------
+
+#Concatenate given list of byte strings
 def glue_msg(blocks):
     cipher = bytearray()
     for i in range(len(blocks)):
@@ -171,11 +185,13 @@ def glue_msg(blocks):
 
     return cipher
 
+#Strip padding from padded msg
 def strip_pad(padded):
     pad = padded[len(padded)-1]
     msg = padded[:len(padded)-pad]
     return msg
 
+#Parse command line arguments for CBC, CTR
 def parse_argv(argv):
     try:
         keyFile = argv[argv.index("-k")+1]
@@ -201,6 +217,8 @@ def parse_argv(argv):
 
     return keyFile, msgFile, outFile
 
+#---------CBC-MAC Functions-------------------
+#Parse command line arguments for CBC-MAC
 def parse_argv_MAC(argv):
     try:
         keyFile = argv[argv.index("-k")+1]
@@ -226,6 +244,7 @@ def parse_argv_MAC(argv):
 
     return keyFile, msgFile, outFile
 
+#Build CBC-MAC tag for given msg
 def build_tag(msg, Fk):
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
     N = len(msg)
@@ -237,8 +256,10 @@ def build_tag(msg, Fk):
 
     return tag
 
+#Verify integrity of given tagged msg
 def verify_tag(msg, tag, Fk):
     if tag == build_tag(msg, Fk):
         return True
     else:
         return False
+#---------------------------------------------
