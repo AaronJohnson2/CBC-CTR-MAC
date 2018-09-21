@@ -1,5 +1,5 @@
 import sys
-
+sys.path.append("../lib")
 from halib import *
 
 keyFile, msgFile, outFile = parse_argv(sys.argv)
