@@ -72,7 +72,6 @@ def split_pad_msg(msg, blockSize):
     if not r:
         blocks.append(bytearray(blockSize))
     else:
-        #padBlock = bytes(pad)
         padBlock = bytearray(pad)
         blocks[len(blocks)-1] = glue_msg([blocks[len(blocks)-1], padBlock])
 
@@ -87,15 +86,14 @@ def XOR(s1, s2):
     for i in range(len(s1)):
         s[i] = s1[i] ^ s2[i]
 
-    return bytes(s)
+    return s
 
 def enc_block_CBC(s1,s2,Fk):
     I = XOR(s1,s2)
-    return Fk.encrypt(I)
+    return Fk.encrypt(bytes(I))
 
 def dec_block_CBC(s1, s2, Fk):
     I = Fk.decrypt(bytes(s2))
-    #I = Fk.decrypt(s2)
     return XOR(s1, I)
 
 def enc_CBC(msg, Fk):
@@ -125,7 +123,7 @@ def dec_CBC(cipher, Fk):
 
 #------------CTR Functions--------------------
 def block_CTR(s1, s2, Fk):
-    I = Fk.encrypt(s1)
+    I = Fk.encrypt(bytes(s1))
     if len(s2) < len(s1):
         I = I[:len(s2)]
 
@@ -145,8 +143,6 @@ def enc_CTR(msg, Fk):
 
     for i in range(len(mBlocks)):
         ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
-        #print(mBlocks[i])
-        #print(ci)
         cBlocks.append(ci)
 
     return glue_msg(cBlocks)
@@ -173,7 +169,6 @@ def glue_msg(blocks):
     for i in range(len(blocks)):
         cipher += blocks[i]
 
-    #return bytes(cipher)
     return cipher
 
 def strip_pad(padded):
@@ -234,7 +229,7 @@ def parse_argv_MAC(argv):
 def build_tag(msg, Fk):
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
     N = len(msg)
-    m_prev = Fk.encrypt(bytes(N.to_bytes(16, byteorder='big')))
+    m_prev = Fk.encrypt(N.to_bytes(16, byteorder='big'))
 
     for i in range(len(mBlocks)):
         tag = enc_block_CBC(m_prev, mBlocks[i], Fk)
