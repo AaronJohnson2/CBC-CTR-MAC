@@ -51,7 +51,7 @@ def split_msg(msg, blockSize):
         blocks.append(bytes(tmp))
    
     #Partial Block
-    tmp = bytearray(blockSize)
+    tmp = bytearray(r)
     for i in range(r):
         tmp[i] = msg[q * blockSize + i]
 
@@ -68,13 +68,13 @@ def split_pad_msg(msg, blockSize):
     pad = blockSize - r
 
     if not r:
-        tmp = blocks[len(blocks)-1]
         blocks.append(bytearray(blockSize))
+    else:
+        padBlock = bytes(pad)
+        blocks[len(blocks)-1] = glue_msg([blocks[len(blocks)-1], padBlock])
 
     for i in range(r,blockSize):
         blocks[len(blocks)-1][i] = (pad.to_bytes(1, byteorder='big'))[0]
-       
-    #blocks.append(bytes(tmp))
 
     return blocks
 
@@ -95,10 +95,9 @@ def dec_block_CBC(s1, s2, Fk):
     return XOR(s1, I)
 
 def enc_CBC(msg, Fk):
-    #print(len(msg))
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
-    #print(len(mBlocks))
     cBlocks = []
+
     IV = urandom(BLOCK_SIZE)
     cBlocks.append(IV)
     
@@ -107,13 +106,6 @@ def enc_CBC(msg, Fk):
         cBlocks.append(ci)
 
     return glue_msg(cBlocks)
-
-def glue_msg(blocks):
-    cipher = bytearray()
-    for i in range(len(blocks)):
-        cipher += blocks[i]
-
-    return bytes(cipher)
 
 def dec_CBC(cipher, Fk):
    cBlocks = split_msg(cipher, BLOCK_SIZE) 
@@ -126,6 +118,20 @@ def dec_CBC(cipher, Fk):
    msg = glue_msg(mBlocks)
 
    return strip_pad(msg)
+
+def enc_block_CTR(s1, s2, Fk):
+    I = Fk.encrypt(s1)
+    if len(s2) < len(s1):
+        I = I[:len(s2)]
+
+    return XOR(I,s2)
+
+def glue_msg(blocks):
+    cipher = bytearray()
+    for i in range(len(blocks)):
+        cipher += blocks[i]
+
+    return bytes(cipher)
 
 def strip_pad(padded):
     pad = padded[len(padded)-1]
@@ -157,4 +163,3 @@ def parse_argv(argv):
         exit()
 
     return keyFile, msgFile, outFile
-
