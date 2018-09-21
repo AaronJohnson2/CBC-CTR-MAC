@@ -1,3 +1,3 @@
-#!/bin/zsh
+#!/bin/bash
 
 python cbc-mac/cbcmac-tag.py $@
