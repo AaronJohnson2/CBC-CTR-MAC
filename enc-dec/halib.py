@@ -141,6 +141,8 @@ def enc_CTR(msg, Fk):
 
     for i in range(len(mBlocks)):
         ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
+        #print(mBlocks[i])
+        #print(ci)
         cBlocks.append(ci)
 
     return glue_msg(cBlocks)
@@ -152,11 +154,12 @@ def dec_CTR(cipher, Fk):
 
    IV = cBlocks[0]
    CTR = int.from_bytes(IV, byteorder='big')
-   for i in range(len(mBlocks)):
+   for i in range(len(cBlocks)-1):
         ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
 
-   for i in range(len(mBlocks)):
-        mi = block_CTR(ctrBlocks[i], cBlocks[i], Fk)
+   for i in range(len(cBlocks)-1):
+        mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
+        #print(mi)
         mBlocks.append(mi)
 
    return glue_msg(mBlocks)
