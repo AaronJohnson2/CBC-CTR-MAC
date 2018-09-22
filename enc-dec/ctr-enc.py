@@ -10,8 +10,8 @@ keyFile, msgFile, outFile = parse_argv(sys.argv)
 
 #Read in msg, create Fk, and encrypt
 msg = read_msg(msgFile)
-Fk = cipher_gen(keyFile)
+#Fk = cipher_gen(keyFile)
 
-cipher = prl_enc_CTR(msg, Fk)
+cipher = prl_enc_CTR(msg, keyFile, 4)
 
 write_msg(cipher, outFile)

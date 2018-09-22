@@ -2,7 +2,7 @@
 #COSC 483
 from Crypto.Cipher import AES
 from os import urandom
-from multiprocessing import Pool
+from multiprocessing import Pool, Process
 import sys
 
 #Block size algorithms operate on
@@ -16,6 +16,7 @@ def cipher_gen(filename):
         print("Error: keyfile '" + filename + "' not found.", file=sys.stderr)
         exit()
 
+    
     key = file.read().replace('\n','')
     hexkey = bytes.fromhex(key)
     Fk = AES.new(hexkey, AES.MODE_ECB)
@@ -177,20 +178,77 @@ def dec_CTR(cipher, Fk):
    return glue_msg(mBlocks)
 
 #Parallel Implementation of enc_CTR
-def prl_enc_CTR(msg, Fk, pNum):
+def prl_enc_CTR(msg, k, pNum):
+    mBlocks = split_msg(msg, BLOCK_SIZE)
+    cBlocks = []
+    ctrBlocks = []
+
+    IV = urandom(BLOCK_SIZE)
+    cBlocks.append(IV)
+
+    CTR = int.from_bytes(IV, byteorder='big')
+    for i in range(len(mBlocks)):
+        ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
+
+#    mDivBlocks = divide_blocks(mBlocks, pNum)
+#    ctrDivBlocks = divide_blocks(ctrBlocks, pNum)
+#    cDivBlocks = divide_blocks(cBlocks, pNum)
+
+    #workDiv = [(mDivBlocks[i], cDivBlocks[i], ctrDivBlocks[i], k) for i in range(pNum)]
+    workDiv = [(mBlocks, cBlocks, ctrBlocks, k)]
     p = Pool(processes=pNum)
-    cipher = p.map(enc_CTR, (msg, Fk))
+    cipher = p.starmap(enc_JOB_CTR, workDiv)
     p.close()
 
-    return cipher
+    return bytearray(cipher[0])
+
+def divide_blocks(blocks, pNum):
+    #for #i in range(len(blocks)):
+    divBlocks = []
+    for i in range(pNum):
+        b = []
+        divBlocks.append(b)
+
+    for i in range(len(blocks)):
+        divBlocks[i%pNum].append(blocks[i])
+        
+
+    return divBlocks
+#def assemble_blocks(divBlocks, pNum):
+#    blocks = []
+    #for i in range(len(
+
+def enc_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
+    Fk = cipher_gen(k)
+    for i in range(len(mBlocks)):
+       ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
+       ci = cBlocks.append(ci)
+    return glue_msg(cBlocks)
+
+def dec_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
+   Fk = cipher_gen(k)
+   for i in range(len(cBlocks)-1):
+        mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
+        mBlocks.append(mi)
+   return glue_msg(mBlocks)
 
 #Parallel Implementation of dec_CTR
-def prl_dec_CTR(cipher, Fk, pNum):
-    p = Pool(processes=pNum)
-    msg = p.map(dec_CTR, (cipher, Fk))
-    p.close()
+def prl_dec_CTR(cipher, k, pNum):
+   cBlocks = split_msg(cipher, BLOCK_SIZE)
+   mBlocks = []
+   ctrBlocks = []
 
-    return msg
+   IV = cBlocks[0]
+   CTR = int.from_bytes(IV, byteorder='big')
+   for i in range(len(cBlocks)-1):
+        ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
+
+   workDiv = [(mBlocks, cBlocks, ctrBlocks, k)]
+   p = Pool(processes=pNum)
+   msg = p.starmap(dec_JOB_CTR, workDiv)
+   p.close()
+
+   return bytearray(msg[0])
 #---------------------------------------------
 
 #Concatenate given list of byte strings
