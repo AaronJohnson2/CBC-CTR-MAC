@@ -1,12 +1,18 @@
 #halib - Hayden Aaron Library
 #COSC 483
+
 from Crypto.Cipher import AES
 from os import urandom
-from multiprocessing import Pool, Process
+from multiprocessing import Pool
 import sys
 
-#Block size algorithms operate on
+#Block size for algorithms
 BLOCK_SIZE = 16
+
+#Number of processors
+CORE_NUM = 4
+
+#----------------- File IO Functions ------------------
 
 #Create and return pseudorandom function from keyfile
 def cipher_gen(filename):
@@ -15,7 +21,6 @@ def cipher_gen(filename):
     except IOError:
         print("Error: keyfile '" + filename + "' not found.", file=sys.stderr)
         exit()
-
     
     key = file.read().replace('\n','')
     hexkey = bytes.fromhex(key)
@@ -24,7 +29,7 @@ def cipher_gen(filename):
 
     return Fk
 
-#Read in byte data from file
+#Read in binary data from file
 def read_msg(filename):
     try:
         file = open(filename, "rb")
@@ -36,65 +41,67 @@ def read_msg(filename):
     file.close()
     return msg
 
-#Write byte data to file
+#Write binary data to file
 def write_msg(msg, filename):
     file = open(filename, "wb")
     file.write(msg)
     file.close()
     return
 
-#Split and return message into blocks without padding
-def split_msg(msg, blockSize):
-    blocks = []
-    q,r = divmod(len(msg), blockSize)
+#Parse command line arguments for CBC, CTR
+def parse_argv(argv):
+    try:
+        keyFile = argv[argv.index("-k")+1]
+        kFlag = True
+    except:
+        kFlag = False
 
-    #Entire Blocks
-    for i in range(q):
-        tmp = bytearray(blockSize)
+    try:
+        msgFile = argv[argv.index("-i")+1]
+        iFlag = True
+    except:
+        iFlag = False
 
-        for j in range(blockSize):
-            tmp[j] = msg[i*blockSize + j]
+    try:
+        outFile = argv[argv.index("-o")+1]
+        oFlag = True
+    except:
+        oFlag = False
 
-        blocks.append(bytearray(tmp))
-   
-    #Partial Block
-    tmp = bytearray(r)
-    for i in range(r):
-        tmp[i] = msg[q * blockSize + i]
+    if(not kFlag or not oFlag or not iFlag):
+        print("usage:" ,sys.argv[0], "-k <keyFile> -i <inputFile> -o <outputFile>", file=sys.stderr)
+        exit()
 
-    if r:
-        blocks.append(bytearray(tmp))
+    return keyFile, msgFile, outFile
 
-    return blocks
+#Parse command line arguments for CBC-MAC
+def parse_argv_MAC(argv):
+    try:
+        keyFile = argv[argv.index("-k")+1]
+        kFlag = True
+    except:
+        kFlag = False
 
-#Return msg split into blocks with padding
-def split_pad_msg(msg, blockSize):
-    q,r = divmod(len(msg), blockSize)
-    blocks = split_msg(msg, blockSize)
+    try:
+        msgFile = argv[argv.index("-m")+1]
+        iFlag = True
+    except:
+        iFlag = False
 
-    pad = blockSize - r
+    try:
+        outFile = argv[argv.index("-t")+1]
+        oFlag = True
+    except:
+        oFlag = False
 
-    if not r:
-        blocks.append(bytearray(blockSize))
-    else:
-        padBlock = bytearray(pad)
-        blocks[len(blocks)-1] = glue_msg([blocks[len(blocks)-1], padBlock])
+    if(not kFlag or not oFlag or not iFlag):
+        print("usage:" ,sys.argv[0], "-k <keyFile> -m <msgFile> -t <tagFile>", file=sys.stderr)
+        exit()
 
-    for i in range(r,blockSize):
-        blocks[len(blocks)-1][i] = (pad.to_bytes(1, byteorder='big'))[0]
+    return keyFile, msgFile, outFile
 
-    return blocks
+#----------------- CBC Functions ------------------
 
-#Return XOR of two given byte arrays
-def XOR(s1, s2):
-    s = bytearray(len(s1))
-
-    for i in range(len(s1)):
-        s[i] = s1[i] ^ s2[i]
-
-    return s
-
-#------------CBC Functions--------------------
 #Single block encoding for CBC, CBC-MAC
 def enc_block_CBC(s1,s2,Fk):
     I = XOR(s1,s2)
@@ -105,7 +112,7 @@ def dec_block_CBC(s1, s2, Fk):
     I = Fk.decrypt(bytes(s2))
     return XOR(s1, I)
 
-#Encode given message with CBC and pseudorandom Fk
+#Encode given message with CBC and pseudorandom function Fk
 def enc_CBC(msg, Fk):
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
     cBlocks = []
@@ -119,7 +126,7 @@ def enc_CBC(msg, Fk):
 
     return glue_msg(cBlocks)
 
-#Decode given message with CBC and pseudorandom Fk
+#Decode given message with CBC and pseudorandom function Fk
 def dec_CBC(cipher, Fk):
    cBlocks = split_msg(cipher, BLOCK_SIZE) 
    mBlocks = []
@@ -132,7 +139,8 @@ def dec_CBC(cipher, Fk):
 
    return strip_pad(msg)
 
-#------------CTR Functions--------------------
+#----------------- CTR Functions ------------------
+
 #Single block encoding/decoding for CTR
 def block_CTR(s1, s2, Fk):
     I = Fk.encrypt(bytes(s1))
@@ -141,7 +149,7 @@ def block_CTR(s1, s2, Fk):
 
     return XOR(I,s2)
 
-#Encode given message with CTR and pseudorandom Fk
+#Encode given message with CTR and pseudorandom function Fk
 def enc_CTR(msg, Fk):
     mBlocks = split_msg(msg, BLOCK_SIZE)
     cBlocks = []
@@ -160,7 +168,7 @@ def enc_CTR(msg, Fk):
 
     return glue_msg(cBlocks)
 
-#Decode given message with CTR and pseudorandom Fk
+#Decode given message with CTR and pseudorandom function Fk
 def dec_CTR(cipher, Fk):
    cBlocks = split_msg(cipher, BLOCK_SIZE)
    mBlocks = []
@@ -197,22 +205,6 @@ def prl_enc_CTR(msg, k, pNum):
 
     return bytearray(cipher[0])
 
-#Job function for multiprocess encoding
-def enc_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
-    Fk = cipher_gen(k)
-    for i in range(len(mBlocks)):
-       ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
-       ci = cBlocks.append(ci)
-    return glue_msg(cBlocks)
-
-#Job function for multiprocess decoding
-def dec_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
-   Fk = cipher_gen(k)
-   for i in range(len(cBlocks)-1):
-       mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
-       mBlocks.append(mi)
-   return glue_msg(mBlocks)
-
 #Parallel Implementation of dec_CTR
 def prl_dec_CTR(cipher, k, pNum):
    cBlocks = split_msg(cipher, BLOCK_SIZE)
@@ -230,76 +222,26 @@ def prl_dec_CTR(cipher, k, pNum):
    p.close()
 
    return bytearray(msg[0])
-#---------------------------------------------
 
-#Concatenate given list of byte strings
-def glue_msg(blocks):
-    cipher = bytearray()
-    for i in range(len(blocks)):
-        cipher += blocks[i]
+#Job function for multiprocess encoding
+def enc_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
+    Fk = cipher_gen(k)
+    for i in range(len(mBlocks)):
+       ci = block_CTR(ctrBlocks[i], mBlocks[i], Fk)
+       ci = cBlocks.append(ci)
+    return glue_msg(cBlocks)
 
-    return cipher
+#Job function for multiprocess decoding
+def dec_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
+   Fk = cipher_gen(k)
+   for i in range(len(cBlocks)-1):
+       mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
+       mBlocks.append(mi)
+   return glue_msg(mBlocks)
 
-#Strip padding from padded msg
-def strip_pad(padded):
-    pad = padded[len(padded)-1]
-    msg = padded[:len(padded)-pad]
-    return msg
+#----------------- CBC-MAC Functions ------------------
 
-#Parse command line arguments for CBC, CTR
-def parse_argv(argv):
-    try:
-        keyFile = argv[argv.index("-k")+1]
-        kFlag = True
-    except:
-        kFlag = False
-
-    try:
-        msgFile = argv[argv.index("-i")+1]
-        iFlag = True
-    except:
-        iFlag = False
-
-    try:
-        outFile = argv[argv.index("-o")+1]
-        oFlag = True
-    except:
-        oFlag = False
-
-    if(not kFlag or not oFlag or not iFlag):
-        print("usage:" ,sys.argv[0], "-k <keyFile> -i <inputFile> -o <outputFile>", file=sys.stderr)
-        exit()
-
-    return keyFile, msgFile, outFile
-
-#---------CBC-MAC Functions-------------------
-#Parse command line arguments for CBC-MAC
-def parse_argv_MAC(argv):
-    try:
-        keyFile = argv[argv.index("-k")+1]
-        kFlag = True
-    except:
-        kFlag = False
-
-    try:
-        msgFile = argv[argv.index("-m")+1]
-        iFlag = True
-    except:
-        iFlag = False
-
-    try:
-        outFile = argv[argv.index("-t")+1]
-        oFlag = True
-    except:
-        oFlag = False
-
-    if(not kFlag or not oFlag or not iFlag):
-        print("usage:" ,sys.argv[0], "-k <keyFile> -m <msgFile> -t <tagFile>", file=sys.stderr)
-        exit()
-
-    return keyFile, msgFile, outFile
-
-#Build CBC-MAC tag for given msg
+#Build CBC-MAC tag for given message
 def build_tag(msg, Fk):
     mBlocks = split_pad_msg(msg, BLOCK_SIZE)
     N = len(msg)
@@ -311,10 +253,76 @@ def build_tag(msg, Fk):
 
     return tag
 
-#Verify integrity of given tagged msg
+#Verify integrity of given tag and message
 def verify_tag(msg, tag, Fk):
     if tag == build_tag(msg, Fk):
         return True
     else:
         return False
-#---------------------------------------------
+
+#----------------- MISC Functions ------------------
+
+#Split and return message into blocks without padding
+def split_msg(msg, blockSize):
+    blocks = []
+    q,r = divmod(len(msg), blockSize)
+
+    #Entire Blocks
+    for i in range(q):
+        tmp = bytearray(blockSize)
+
+        for j in range(blockSize):
+            tmp[j] = msg[i*blockSize + j]
+
+        blocks.append(bytearray(tmp))
+   
+    #Partial Block
+    tmp = bytearray(r)
+    for i in range(r):
+        tmp[i] = msg[q * blockSize + i]
+
+    if r:
+        blocks.append(bytearray(tmp))
+
+    return blocks
+
+#Split and return message into blocks with padding
+def split_pad_msg(msg, blockSize):
+    q,r = divmod(len(msg), blockSize)
+    blocks = split_msg(msg, blockSize)
+
+    pad = blockSize - r
+
+    if not r:
+        blocks.append(bytearray(blockSize))
+    else:
+        padBlock = bytearray(pad)
+        blocks[len(blocks)-1] = glue_msg([blocks[len(blocks)-1], padBlock])
+
+    for i in range(r,blockSize):
+        blocks[len(blocks)-1][i] = (pad.to_bytes(1, byteorder='big'))[0]
+
+    return blocks
+
+#Return XOR of two given byte arrays
+def XOR(s1, s2):
+    s = bytearray(len(s1))
+
+    for i in range(len(s1)):
+        s[i] = s1[i] ^ s2[i]
+
+    return s
+
+#Concatenate given list of byte strings
+def glue_msg(blocks):
+    cipher = bytearray()
+    for i in range(len(blocks)):
+        cipher += blocks[i]
+
+    return cipher
+
+#Strip padding from padded message
+def strip_pad(padded):
+    pad = padded[len(padded)-1]
+    msg = padded[:len(padded)-pad]
+    return msg
