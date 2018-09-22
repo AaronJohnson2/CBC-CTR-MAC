@@ -202,18 +202,18 @@ def prl_enc_CTR(msg, k, pNum):
 
     return bytearray(cipher[0])
 
-def divide_blocks(blocks, pNum):
+#def divide_blocks(blocks, pNum):
     #for #i in range(len(blocks)):
-    divBlocks = []
-    for i in range(pNum):
-        b = []
-        divBlocks.append(b)
+#    divBlocks = []
+#    for i in range(pNum):
+#        b = []
+#        divBlocks.append(b)
 
-    for i in range(len(blocks)):
-        divBlocks[i%pNum].append(blocks[i])
+#    for i in range(len(blocks)):
+#        divBlocks[i%pNum].append(blocks[i])
         
 
-    return divBlocks
+#    return divBlocks
 #def assemble_blocks(divBlocks, pNum):
 #    blocks = []
     #for i in range(len(
