@@ -3,16 +3,52 @@
 msg=$1
 k=$2
 
+echo "Checking CBC"
 ./cbc-enc -k $2 -i $1 -o cbc-cipher
 ./cbc-dec -k $2 -i cbc-cipher -o cbc-cipher-dec
 
 diff $1 cbc-cipher-dec
-
 rm cbc-cipher-dec cbc-cipher
 
+echo "Checking CTR"
 ./ctr-enc -k $2 -i $1 -o ctr-cipher
 ./ctr-dec -k $2 -i ctr-cipher -o ctr-cipher-dec
 
 diff $1 ctr-cipher-dec
-
 rm ctr-cipher-dec ctr-cipher
+
+echo "Try decoding CBC with CTR..."
+./cbc-enc -k $2 -i $1 -o cbc-cipher
+./ctr-dec -k $2 -i cbc-cipher -o ctr-cipher-dec
+
+diff $1 ctr-cipher-dec
+rm ctr-cipher-dec cbc-cipher
+
+echo "Checking CBC-MAC"
+echo "On valid message..."
+./cbcmac-tag -k $2 -m $1 -t tagFile
+./cbcmac-validate -k $2 -m $1 -t tagFile
+
+echo "On invalid message..."
+touch tempMsg
+cp $1 tempMsg
+echo "a" >> tempMsg
+./cbcmac-validate -k $2 -m tempMsg -t tagFile
+rm tempMsg
+
+echo "Checking enc-dec of tagged file..."
+echo "CBC..."
+./cbc-enc -k $2 -i $1 -o cbc-cipher
+./cbc-dec -k $2 -i cbc-cipher -o cbc-cipher-dec
+diff $1 cbc-cipher-dec
+./cbcmac-validate -k $2 -m cbc-cipher-dec -t tagFile
+rm cbc-cipher-dec cbc-cipher
+
+echo "CTR..."
+./ctr-enc -k $2 -i $1 -o ctr-cipher
+./ctr-dec -k $2 -i ctr-cipher -o ctr-cipher-dec
+diff $1 ctr-cipher-dec
+./cbcmac-validate -k $2 -m ctr-cipher-dec -t tagFile
+rm ctr-cipher-dec ctr-cipher
+
+rm tagFile
