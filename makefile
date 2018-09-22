@@ -1,3 +1,3 @@
-#!/bin/bash
-
-pip install pycryptodome
+FILES=$(shell pip install pycryptodome)
+all:
+	$(FILES)
