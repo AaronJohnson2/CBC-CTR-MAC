@@ -190,11 +190,6 @@ def prl_enc_CTR(msg, k, pNum):
     for i in range(len(mBlocks)):
         ctrBlocks.append(bytes((CTR + i + 1).to_bytes(16, byteorder='big')))
 
-#    mDivBlocks = divide_blocks(mBlocks, pNum)
-#    ctrDivBlocks = divide_blocks(ctrBlocks, pNum)
-#    cDivBlocks = divide_blocks(cBlocks, pNum)
-
-    #workDiv = [(mDivBlocks[i], cDivBlocks[i], ctrDivBlocks[i], k) for i in range(pNum)]
     workDiv = [(mBlocks, cBlocks, ctrBlocks, k)]
     p = Pool(processes=pNum)
     cipher = p.starmap(enc_JOB_CTR, workDiv)
@@ -202,22 +197,7 @@ def prl_enc_CTR(msg, k, pNum):
 
     return bytearray(cipher[0])
 
-#def divide_blocks(blocks, pNum):
-    #for #i in range(len(blocks)):
-#    divBlocks = []
-#    for i in range(pNum):
-#        b = []
-#        divBlocks.append(b)
-
-#    for i in range(len(blocks)):
-#        divBlocks[i%pNum].append(blocks[i])
-        
-
-#    return divBlocks
-#def assemble_blocks(divBlocks, pNum):
-#    blocks = []
-    #for i in range(len(
-
+#Job function for multiprocess encoding
 def enc_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
     Fk = cipher_gen(k)
     for i in range(len(mBlocks)):
@@ -225,11 +205,12 @@ def enc_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
        ci = cBlocks.append(ci)
     return glue_msg(cBlocks)
 
+#Job function for multiprocess decoding
 def dec_JOB_CTR(mBlocks, cBlocks, ctrBlocks, k):
    Fk = cipher_gen(k)
    for i in range(len(cBlocks)-1):
-        mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
-        mBlocks.append(mi)
+       mi = block_CTR(ctrBlocks[i], cBlocks[i+1], Fk)
+       mBlocks.append(mi)
    return glue_msg(mBlocks)
 
 #Parallel Implementation of dec_CTR

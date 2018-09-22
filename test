@@ -1,0 +1,22 @@
+#!/bin/bash
+
+msg=$1
+k=$2
+
+#./cbc-enc -k temp/keyFile1 -i temp/testMessage -o cbc-cipher
+#./cbc-dec -k temp/keyFile1 -i cbc-cipher -o cbc-cipher-dec
+./cbc-enc -k $2 -i $1 -o cbc-cipher
+./cbc-dec -k $2 -i cbc-cipher -o cbc-cipher-dec
+
+diff $1 cbc-cipher-dec
+
+rm cbc-cipher-dec cbc-cipher
+
+#./ctr-enc -k temp/keyFile1 -i temp/testMessage -o ctr-cipher
+#./ctr-dec -k temp/keyFile1 -i ctr-cipher -o ctr-cipher-dec
+./ctr-enc -k $2 -i $1 -o ctr-cipher
+./ctr-dec -k $2 -i ctr-cipher -o ctr-cipher-dec
+
+diff $1 ctr-cipher-dec
+
+rm ctr-cipher-dec ctr-cipher
